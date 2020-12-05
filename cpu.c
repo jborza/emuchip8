@@ -225,9 +225,13 @@ void emulate_op(StateChip8 *state)
         {
         case 0x009E:
             //skip next instruction if key at VX is pressed
+            if(state->keys[state->V[vx]])
+                state->PC+=2;
             break;
         case 0x00A1:
             //skip next instruction if key at VX is not pressed
+             if(!(state->keys[state->V[vx]]))
+                state->PC+=2;
             break;
         }
         break;

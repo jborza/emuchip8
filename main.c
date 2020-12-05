@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "state.h"
 #include "cpu.h"
+#include "keymap.h"
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 320
@@ -48,11 +49,12 @@ uint8_t *read_testrom(size_t *rom_size)
     // FILE* file = fopen("roms/Sierpinski.ch8", "rb");
     // FILE* file = fopen("roms/BMP Viewer - Hello (C8 example) [Hap, 2005].ch8", "rb"); //OK
     // FILE *file = fopen("roms/15 Puzzle [Roger Ivie].ch8", "rb");
-    char* name = "roms/Breakout (Brix hack) [David Winter, 1997].ch8";
+    // char* name = "roms/Breakout (Brix hack) [David Winter, 1997].ch8";
     // char* name = "roms/SQRT Test [Sergey Naydenov, 2010].ch8"; //OK
     // char* name = "roms/Sierpinski.ch8"; //OK
     // char* name = "roms/Space Invaders [David Winter].ch8";
     // char* name = "roms/sinusoid.ch8";
+    char* name = "roms/keyboard.ch8";
     FILE *file = fopen(name,"rb");
     if (!file)
     {
@@ -127,6 +129,20 @@ int main(int argc, char *args[])
             {
                 // Break out of the loop on quit
                 break;
+            }
+            else if(event.type == SDL_KEYDOWN){
+                for(int i = 0; i < CHIP8_KEY_COUNT; i++){
+                    if(event.key.keysym.sym == KEYMAP[i]){
+                        state->keys[i] = 1;
+                    }
+                }
+            }
+            else if(event.type == SDL_KEYUP){
+                for(int i = 0; i < CHIP8_KEY_COUNT; i++){
+                    if(event.key.keysym.sym == KEYMAP[i]){
+                        state->keys[i] = 0;
+                    }
+                }
             }
         }
         //cycle the emulator
