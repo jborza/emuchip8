@@ -7,6 +7,7 @@
 #define DISPLAY_HEIGHT 32
 #define CHIP8_DISPLAY_SIZE DISPLAY_WIDTH*DISPLAY_HEIGHT
 #define CHIP8_MEMORY_SIZE 4096
+#define CHIP8_KEY_COUNT 16
 
 typedef struct StateChip8 {
     uint8_t memory[CHIP8_MEMORY_SIZE];
@@ -20,4 +21,5 @@ typedef struct StateChip8 {
     uint8_t display[CHIP8_DISPLAY_SIZE];
     int draw_flag;
     uint8_t current_key;
+    uint8_t keys[CHIP8_KEY_COUNT];
 } StateChip8;

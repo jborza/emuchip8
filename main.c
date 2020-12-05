@@ -15,63 +15,83 @@ static SDL_Texture *texture = NULL;
 static SDL_Renderer *renderer;
 static StateChip8 *state;
 
+uint32_t total_cycles;
+
 void draw_chip8_screen(SDL_Surface *surface, StateChip8 *state)
 {
     SDL_LockSurface(surface);
     //draw random junk
-    uint32_t *pixels = (uint32_t*)surface->pixels;
-    for(int i = 0; i < CHIP8_DISPLAY_SIZE; i++){
+    uint32_t *pixels = (uint32_t *)surface->pixels;
+    for (int i = 0; i < CHIP8_DISPLAY_SIZE; i++)
+    {
         pixels[i] = state->display[i] == 0 ? 0 : 0xFFFFFFFF;
     }
     SDL_UnlockSurface(surface);
 }
 
-void update(){
+void update()
+{
     //draw some stuff into the buffer
     draw_chip8_screen(chip8buffer, state);
-    SDL_RenderClear(renderer);
     //surface to texture
     SDL_BlitScaled(chip8buffer, NULL, argbbuffer, NULL);
     // Update the intermediate texture with the contents of the RGBA buffer.
     SDL_UpdateTexture(texture, NULL, argbbuffer->pixels, argbbuffer->pitch);
+    SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);
 }
 
-uint8_t* read_testrom(size_t *rom_size) {
-	// FILE* file = fopen("roms/BC_test.ch8", "rb");
-	// FILE* file = fopen("roms/Sierpinski.ch8", "rb");
-	FILE* file = fopen("roms/test_opcode.ch8", "rb");
-	if (!file) {
-		printf("Couldn't load ROM!");
-		exit(1);
-	}
+uint8_t *read_testrom(size_t *rom_size)
+{
+    // FILE* file = fopen("roms/BC_test.ch8", "rb");
+    // FILE* file = fopen("roms/Sierpinski.ch8", "rb");
+    // FILE* file = fopen("roms/BMP Viewer - Hello (C8 example) [Hap, 2005].ch8", "rb"); //OK
+    // FILE *file = fopen("roms/15 Puzzle [Roger Ivie].ch8", "rb");
+    char* name = "roms/Breakout (Brix hack) [David Winter, 1997].ch8";
+    // char* name = "roms/SQRT Test [Sergey Naydenov, 2010].ch8"; //OK
+    // char* name = "roms/Sierpinski.ch8"; //OK
+    // char* name = "roms/Space Invaders [David Winter].ch8";
+    // char* name = "roms/sinusoid.ch8";
+    FILE *file = fopen(name,"rb");
+    if (!file)
+    {
+        printf("Couldn't load ROM!");
+        exit(1);
+    }
     //get file size
     fseek(file, 0, SEEK_END);
     int size = (int)ftell(file);
     *rom_size = size;
     fseek(file, 0, SEEK_SET);
-    
-	uint8_t *rom_buffer = malloc(size);
 
-	int read = fread(rom_buffer, sizeof(uint8_t), size, file);
-	fclose(file);
-	return rom_buffer;
+    uint8_t *rom_buffer = malloc(size);
+
+    int read = fread(rom_buffer, sizeof(uint8_t), size, file);
+    fclose(file);
+    return rom_buffer;
 }
 
-void emu_cycle(){
+void emu_cycle()
+{
     emulate_op(state);
+    total_cycles++;
+
+    //TODO better timing
+    if(total_cycles % 9 == 0)
+        update_timers(state);
+    usleep(2000);
 }
 
 int main(int argc, char *args[])
 {
-    state = (StateChip8*) malloc(sizeof(StateChip8));
+    state = (StateChip8 *)malloc(sizeof(StateChip8));
     initialize_state(state);
     size_t rom_size;
     uint8_t *rom = read_testrom(&rom_size);
     load_rom(state, rom, rom_size);
     free(rom);
-    
+
     SDL_Window *window = NULL;
     SDL_Surface *screenSurface = NULL;
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -99,24 +119,25 @@ int main(int argc, char *args[])
 
     while (1)
     {
-      // Get the next event
-      SDL_Event event;
-      if (SDL_PollEvent(&event))
-      {
-        if (event.type == SDL_QUIT)
+        // Get the next event
+        SDL_Event event;
+        if (SDL_PollEvent(&event))
         {
-          // Break out of the loop on quit
-          break;
+            if (event.type == SDL_QUIT)
+            {
+                // Break out of the loop on quit
+                break;
+            }
         }
-      }
-      //cycle the emulator
-      emu_cycle();
-      if(state->draw_flag){
-          state->draw_flag = 0;
-          update();
-      }
+        //cycle the emulator
+        emu_cycle();
+        if (state->draw_flag)
+        {
+            state->draw_flag = 0;
+            update();
+        }
     }
-    
+
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;

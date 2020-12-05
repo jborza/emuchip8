@@ -29,6 +29,14 @@ void load_font(StateChip8 *state)
     memcpy(state->memory, font, FONT_SIZE);
 }
 
+void update_timers(StateChip8 *state)
+{
+    if (state->delay_timer > 0)
+        state->delay_timer--;
+    if (state->sound_timer > 0)
+        state->sound_timer--;
+}
+
 void draw(StateChip8 *state, uint16_t opcode, uint8_t vx, uint8_t vy)
 {
     //DXYN
@@ -159,9 +167,9 @@ void emulate_op(StateChip8 *state)
             }
             break;
         case 0x0005:
-            //VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't. 
+            //VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
             {
-                if(state->V[vx] > state->V[vy])
+                if (state->V[vx] > state->V[vy])
                     state->V[0xF] = 1;
                 else
                     state->V[0xF] = 0;
@@ -174,9 +182,9 @@ void emulate_op(StateChip8 *state)
             state->V[vx] >>= 1;
             break;
         case 0x0007:
-            //Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't. 
+            //Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
             //vx = vy - vx
-            if(state->V[vy] > state->V[vx])
+            if (state->V[vy] > state->V[vx])
                 state->V[0xF] = 1;
             else
                 state->V[0xF] = 0;
@@ -211,9 +219,18 @@ void emulate_op(StateChip8 *state)
     case 0xD000:
         draw(state, opcode, vx, vy);
         break;
-    // case 0xE000:
-    //key operations
-    // break;
+    case 0xE000:
+        //key operations
+        switch (opcode & 0x00FF)
+        {
+        case 0x009E:
+            //skip next instruction if key at VX is pressed
+            break;
+        case 0x00A1:
+            //skip next instruction if key at VX is not pressed
+            break;
+        }
+        break;
     case 0xF000:
         switch (opcode & 0x00FF)
         {
