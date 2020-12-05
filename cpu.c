@@ -2,6 +2,7 @@
 #include "font.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 void initialize_state(StateChip8 *state)
 {
@@ -62,7 +63,7 @@ void draw(StateChip8 *state, uint16_t opcode, uint8_t vx, uint8_t vy)
     state->draw_flag = 1;
 }
 
-int emulate_op(StateChip8 *state)
+void emulate_op(StateChip8 *state)
 {
     //fetch
     uint16_t opcode = state->memory[state->PC];
@@ -101,12 +102,12 @@ int emulate_op(StateChip8 *state)
         break;
     case 0x3000:
         //skip if vx == NN
-        if (state->V[vx] == opcode & 0x00FF)
+        if (state->V[vx] == (opcode & 0x00FF))
             state->PC += 2;
         break;
     case 0x4000:
         //skip if vx != NN
-        if (state->V[vx] != opcode & 0x00FF)
+        if (state->V[vx] != (opcode & 0x00FF))
             state->PC += 2;
         break;
     case 0x5000:
@@ -124,6 +125,71 @@ int emulate_op(StateChip8 *state)
         break;
     case 0x8000:
         //TODO
+        switch (opcode & 0x000F)
+        {
+        case 0x0000:
+            //vx = vy
+            state->V[vx] = state->V[vy];
+            break;
+        case 0x0001:
+            //vx = vx | vy
+            state->V[vx] |= state->V[vy];
+            break;
+        case 0x0002:
+            //vx = vx | vy
+            state->V[vx] &= state->V[vy];
+            break;
+        case 0x0003:
+            //vx = vx ^ vy
+            state->V[vx] ^= state->V[vy];
+            break;
+        case 0x0004:
+            //vx = vx+vy, vf=carry
+            {
+                uint16_t result = state->V[vx] + state->V[vy];
+                if (result > 0xFF)
+                {
+                    state->V[0xF] = 1;
+                }
+                else
+                {
+                    state->V[0xF] = 0;
+                }
+                state->V[vx] = result & 0xFF;
+            }
+            break;
+        case 0x0005:
+            //VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't. 
+            {
+                if(state->V[vx] > state->V[vy])
+                    state->V[0xF] = 1;
+                else
+                    state->V[0xF] = 0;
+                state->V[vx] -= state->V[vy];
+            }
+            break;
+        case 0x0006:
+            //Stores the least significant bit of VX in VF and then shifts VX to the right by 1.
+            state->V[0xF] = state->V[vx] & 0x1;
+            state->V[vx] >>= 1;
+            break;
+        case 0x0007:
+            //Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't. 
+            //vx = vy - vx
+            if(state->V[vy] > state->V[vx])
+                state->V[0xF] = 1;
+            else
+                state->V[0xF] = 0;
+            state->V[vx] = state->V[vy] - state->V[vx];
+            break;
+        case 0x000E:
+            //Stores the most significant bit of VX in VF and then shifts VX to the left by 1.
+            state->V[0xF] = state->V[vx] >> 7;
+            state->V[vx] <<= 1;
+            break;
+        default:
+            printf("Unknown opcode [0x0000]: 0x%X\n", opcode);
+        }
         break;
     case 0x9000:
         //skips if VX doesn't equal VY.
@@ -136,7 +202,7 @@ int emulate_op(StateChip8 *state)
         break;
     case 0xB000:
         //jump to NNN plus V0
-        state->PC = opcode & 0xFFF + state->V[0];
+        state->PC = (opcode & 0xFFF) + state->V[0];
         break;
     case 0xC000:
         //Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
@@ -144,6 +210,62 @@ int emulate_op(StateChip8 *state)
         break;
     case 0xD000:
         draw(state, opcode, vx, vy);
+        break;
+    // case 0xE000:
+    //key operations
+    // break;
+    case 0xF000:
+        switch (opcode & 0x00FF)
+        {
+        case 0x0007:
+            //set vx = timer delay
+            state->V[vx] = state->delay_timer;
+            break;
+        case 0x000A:
+            //wait for a key press, store it in vx
+            if (!state->current_key)
+            {
+                //should be blocking (e.g. we should not advance PC)
+                state->PC -= 2;
+                return;
+            }
+            state->V[vx] = state->current_key;
+            break;
+        case 0x0015:
+            //set delay timer to VX
+            state->delay_timer = state->V[vx];
+            break;
+        case 0x0018:
+            //set sound timer to VX
+            state->sound_timer = state->V[vx];
+            break;
+        case 0x001E:
+            // add vx to I
+            state->I += state->V[vx];
+            break;
+        case 0x0029:
+            //set i to the location of sprite for the character in vx
+            state->I = state->V[vx] * 5;
+            break;
+        case 0x0033:
+            //take the decimal representation of VX, place the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
+            state->memory[state->I] = state->V[vx] / 100;
+            state->memory[state->I + 1] = (state->V[vx] / 10) % 10;
+            state->memory[state->I + 2] = (state->V[vx] % 100) % 10;
+            break;
+        case 0x0055:
+            for (int i = 0; i <= vx; i++)
+            {
+                state->memory[state->I + i] = state->V[i];
+            }
+            break;
+        case 0x0065:
+            //fill v0 to vx with values from memory starting at i
+            for (int i = 0; i <= vx; i++)
+            {
+                state->V[i] = state->memory[state->I + i];
+            }
+        }
         break;
     default:
         printf("Unknown opcode [0x0000]: 0x%X\n", opcode);

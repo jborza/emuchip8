@@ -39,9 +39,11 @@ void update(){
 }
 
 uint8_t* read_testrom(size_t *rom_size) {
-	FILE* file = fopen("roms/logo.ch8", "rb");
+	// FILE* file = fopen("roms/BC_test.ch8", "rb");
+	// FILE* file = fopen("roms/Sierpinski.ch8", "rb");
+	FILE* file = fopen("roms/test_opcode.ch8", "rb");
 	if (!file) {
-		printf("Couldn't load roms/logo.ch8");
+		printf("Couldn't load ROM!");
 		exit(1);
 	}
     //get file size
@@ -70,11 +72,6 @@ int main(int argc, char *args[])
     load_rom(state, rom, rom_size);
     free(rom);
     
-    //draw some junk
-    for(int i = 0; i < 32; i++){
-        int coord = i * DISPLAY_WIDTH + i;
-        state->display[coord] = 255;
-    }
     SDL_Window *window = NULL;
     SDL_Surface *screenSurface = NULL;
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -114,7 +111,10 @@ int main(int argc, char *args[])
       }
       //cycle the emulator
       emu_cycle();
-      update();
+      if(state->draw_flag){
+          state->draw_flag = 0;
+          update();
+      }
     }
     
     SDL_DestroyWindow(window);
