@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #include "state.h"
+#include "cpu.h"
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 320
@@ -19,7 +20,7 @@ void draw_chip8_screen(SDL_Surface *surface, StateChip8 *state)
     SDL_LockSurface(surface);
     //draw random junk
     uint32_t *pixels = (uint32_t*)surface->pixels;
-    for(int i = 0; i < DISPLAY_SIZE; i++){
+    for(int i = 0; i < CHIP8_DISPLAY_SIZE; i++){
         pixels[i] = state->display[i] == 0 ? 0 : 0xFFFFFFFF;
     }
     SDL_UnlockSurface(surface);
@@ -37,10 +38,38 @@ void update(){
     SDL_RenderPresent(renderer);
 }
 
+uint8_t* read_testrom(size_t *rom_size) {
+	FILE* file = fopen("roms/logo.ch8", "rb");
+	if (!file) {
+		printf("Couldn't load roms/logo.ch8");
+		exit(1);
+	}
+    //get file size
+    fseek(file, 0, SEEK_END);
+    int size = (int)ftell(file);
+    *rom_size = size;
+    fseek(file, 0, SEEK_SET);
+    
+	uint8_t *rom_buffer = malloc(size);
+
+	int read = fread(rom_buffer, sizeof(uint8_t), size, file);
+	fclose(file);
+	return rom_buffer;
+}
+
+void emu_cycle(){
+    emulate_op(state);
+}
+
 int main(int argc, char *args[])
 {
     state = (StateChip8*) malloc(sizeof(StateChip8));
-    state->memory = malloc(CHIP8_MEMORY_SIZE);
+    initialize_state(state);
+    size_t rom_size;
+    uint8_t *rom = read_testrom(&rom_size);
+    load_rom(state, rom, rom_size);
+    free(rom);
+    
     //draw some junk
     for(int i = 0; i < 32; i++){
         int coord = i * DISPLAY_WIDTH + i;
@@ -83,6 +112,8 @@ int main(int argc, char *args[])
           break;
         }
       }
+      //cycle the emulator
+      emu_cycle();
       update();
     }
     
