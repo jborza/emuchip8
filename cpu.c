@@ -61,7 +61,7 @@ void draw(StateChip8 *state, uint16_t opcode, uint8_t vx, uint8_t vy)
             {
                 if (state->display[(ry + y) * DISPLAY_WIDTH + rx + x] == 1)
                 {
-                    state->V[0xF] = 0;
+                    state->V[0xF] = 1;
                 }
                 state->display[(ry + y) * DISPLAY_WIDTH + rx + x] ^= 1;
             }
