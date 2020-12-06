@@ -82,7 +82,7 @@ void emu_cycle()
     //TODO better timing
     if(total_cycles % 9 == 0)
         update_timers(state);
-    usleep(2000);
+    usleep(1850);
 }
 
 int main(int argc, char *args[])
