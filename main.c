@@ -1,7 +1,10 @@
-//TODO set up 64x32 display
-//TODO
-
+#ifdef _WIN32
+#include <SDL.h>
+#include <Windows.h>
+#else
 #include <SDL2/SDL.h>
+#endif // #ifdef _WIN32
+
 #include <stdio.h>
 #include "state.h"
 #include "cpu.h"
@@ -45,16 +48,7 @@ void update()
 
 uint8_t *read_testrom(size_t *rom_size)
 {
-    // FILE* file = fopen("roms/BC_test.ch8", "rb");
-    // FILE* file = fopen("roms/Sierpinski.ch8", "rb");
-    // FILE* file = fopen("roms/BMP Viewer - Hello (C8 example) [Hap, 2005].ch8", "rb"); //OK
-    // FILE *file = fopen("roms/15 Puzzle [Roger Ivie].ch8", "rb");
-    // char* name = "roms/Breakout (Brix hack) [David Winter, 1997].ch8";
-    // char* name = "roms/SQRT Test [Sergey Naydenov, 2010].ch8"; //OK
-    // char* name = "roms/Sierpinski.ch8"; //OK
-    // char* name = "roms/Space Invaders [David Winter].ch8";
-    // char* name = "roms/sinusoid.ch8";
-    char* name = "roms/keyboard.ch8";
+    char* name = "roms/Breakout [Carmelo Cortez, 1979].ch8";
     FILE *file = fopen(name,"rb");
     if (!file)
     {
@@ -82,7 +76,12 @@ void emu_cycle()
     //TODO better timing
     if(total_cycles % 9 == 0)
         update_timers(state);
+
+#ifdef _WIN32
+    Sleep(2);
+#else
     usleep(1850);
+#endif
 }
 
 int main(int argc, char *args[])
