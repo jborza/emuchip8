@@ -20,6 +20,5 @@ typedef struct StateChip8 {
     uint8_t delay_timer;
     uint8_t display[CHIP8_DISPLAY_SIZE];
     int draw_flag;
-    uint8_t current_key;
     uint8_t keys[CHIP8_KEY_COUNT];
 } StateChip8;
