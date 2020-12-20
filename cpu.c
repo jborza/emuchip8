@@ -7,19 +7,19 @@
 void initialize_state(StateChip8* state)
 {
 	memset(state, 0, sizeof(StateChip8));
-	state->PC = 0x200;
+	state->PC = PROGRAM_OFFSET;
 	load_font(state);
 }
 
 void load_rom(StateChip8* state, uint8_t* rom, size_t rom_size)
 {
-	memcpy(state->memory + 0x200, rom, rom_size);
+	memcpy(state->memory + PROGRAM_OFFSET, rom, rom_size);
 }
 
 void load_font(StateChip8* state)
 {
 	uint8_t* font = make_font();
-	memcpy(state->memory, font, FONT_SIZE);
+	memcpy(state->memory + FONT_OFFSET, font, FONT_SIZE);
 }
 
 void update_timers(StateChip8* state)
@@ -70,12 +70,14 @@ void emulate_op(StateChip8* state)
 	uint16_t opcode = state->memory[state->PC];
 	opcode <<= 8;
 	opcode |= state->memory[state->PC + 1];
+	uint16_t pc_old = state->PC;
 	state->PC += 2;
 	//parse out vx and vy
 	uint8_t vx, vy;
 	vx = (opcode & 0x0F00) >> 8;
 	vy = (opcode & 0x00F0) >> 4;
 	//decode first 4 bits - the first nibble of the opcode:
+	state->draw_flag = 1;
 	switch (opcode & 0xF000)
 	{
 	case 0x0000:
@@ -148,46 +150,44 @@ void emulate_op(StateChip8* state)
 			//vx = vx+vy, vf=carry
 		{
 			uint16_t result = state->V[vx] + state->V[vy];
-			if (result > 0xFF)
-			{
-				state->V[0xF] = 1;
-			}
-			else
-			{
-				state->V[0xF] = 0;
-			}
+			uint8_t overflow = result > 0xFF ? 1 : 0;
 			state->V[vx] = result & 0xFF;
+			state->V[0xF] = overflow;
 		}
 		break;
 		case 0x0005:
 			//VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
 		{
-			if (state->V[vx] > state->V[vy])
-				state->V[0xF] = 1;
-			else
-				state->V[0xF] = 0;
-			state->V[vx] -= state->V[vy];
+			uint8_t overflow = state->V[vx] >= state->V[vy] ? 1 : 0;
+			state->V[vx] = state->V[vx] - state->V[vy];
+			state->V[0xF] = overflow;
+			break;
 		}
 		break;
-		case 0x0006:
+		case 0x0006: {
 			//Stores the least significant bit of VX in VF and then shifts VX to the right by 1.
-			state->V[0xF] = state->V[vx] & 0x1;
+			uint8_t overflow = state->V[vx] & 0x1;
 			state->V[vx] >>= 1;
+			state->V[0xF] = overflow;
 			break;
+		}
 		case 0x0007:
 			//Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
 			//vx = vy - vx
-			if (state->V[vy] > state->V[vx])
-				state->V[0xF] = 1;
-			else
-				state->V[0xF] = 0;
+		{
+			uint8_t overflow = state->V[vy] >= state->V[vx] ? 1 : 0;
 			state->V[vx] = state->V[vy] - state->V[vx];
+			state->V[0xF] = overflow;
 			break;
+		}
 		case 0x000E:
 			//Stores the most significant bit of VX in VF and then shifts VX to the left by 1.
-			state->V[0xF] = state->V[vx] >> 7;
+		{
+			uint8_t overflow = state->V[vx] >> 7;
 			state->V[vx] <<= 1;
+			state->V[0xF] = overflow;
 			break;
+		}
 		default:
 			printf("Unknown opcode [0x0000]: 0x%X\n", opcode);
 		}
@@ -244,7 +244,7 @@ void emulate_op(StateChip8* state)
 					//key[i] = 0;
 					state->V[vx] = i;
 					keypress = 1;
-					printf("got keypress:%i",i);
+					printf("got keypress:%i", i);
 					break;
 				}
 			}
@@ -268,7 +268,7 @@ void emulate_op(StateChip8* state)
 			break;
 		case 0x0029:
 			//set i to the location of sprite for the character in vx
-			state->I = state->V[vx] * 5;
+			state->I = state->V[vx] * 5 + FONT_OFFSET;
 			break;
 		case 0x0033:
 			//take the decimal representation of VX, place the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
@@ -277,6 +277,7 @@ void emulate_op(StateChip8* state)
 			state->memory[state->I + 2] = (state->V[vx] % 100) % 10;
 			break;
 		case 0x0055:
+			//fill memory at I to I+x (inclusive!) with values of v0 to vx
 			for (int i = 0; i <= vx; i++)
 			{
 				state->memory[state->I + i] = state->V[i];
@@ -293,4 +294,5 @@ void emulate_op(StateChip8* state)
 	default:
 		printf("Unknown opcode [0x0000]: 0x%X\n", opcode);
 	}
+	//printf("@%04X: h%04X; i: %04x, v0: %02X v1:%02X v2:%02X\n", pc_old, opcode, state->I, state->V[0], state->V[1], state->V[2]);
 };

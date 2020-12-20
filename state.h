@@ -8,6 +8,8 @@
 #define CHIP8_DISPLAY_SIZE DISPLAY_WIDTH*DISPLAY_HEIGHT
 #define CHIP8_MEMORY_SIZE 4096
 #define CHIP8_KEY_COUNT 16
+#define FONT_OFFSET 0x10
+#define PROGRAM_OFFSET 0x200
 
 typedef struct StateChip8 {
     uint8_t memory[CHIP8_MEMORY_SIZE];
