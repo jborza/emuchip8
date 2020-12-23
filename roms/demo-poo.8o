@@ -1,0 +1,142 @@
+﻿###########################################
+#
+# Draws the stored font
+#
+###########################################
+
+: keymap  0x1 0x2 0x3 0xC 0x4 0x5 0x6 0xD 0x7 0x8 0x9 0xE 0xA 0x0 0xB 0xF
+
+
+: main
+	:const cell 8
+	:const wrap 32
+
+
+
+loop
+
+clear 
+
+	v1 := 0 #x
+	v2 := 0 #y
+	v3 := 0 #character counter
+
+loop
+		i := keymap
+		i += v3 #add index of the key
+		load v0
+		i := hex v0
+		sprite v1 v2 5
+		v1 += cell
+		if v1 >= wrap then v2 += cell
+		if v1 >= wrap then v1 := 0
+		
+		v3 += 1 # amount of keys drawn
+		if v3 != 16 then
+again
+
+#loop
+  
+  i := 1000
+  v0 := random 255
+  bcd v0
+	load v2
+	
+	#i, i+2, i+2 contains bcd
+	v7 := 40 #x 
+	v8 := 0 # y
+	
+	#draw first digit
+	i := hex v0
+	sprite v7 v8 5
+	
+	#draw second digit
+	i := hex v1
+	v7 += cell
+	sprite v7 v8 5
+	
+	# third digit
+	i := hex v2
+	v7 += cell
+	sprite v7 v8 5
+	
+#again
+
+# draw poo
+
+va := random 8
+va += 32
+
+v7 := va
+v8 := 8
+i := poo1
+sprite v7 v8 15
+
+i := poo2
+v7 += 8
+sprite v7 v8 15
+
+v8 += 15
+
+draw-poop
+
+
+# wait for a second
+ve := 30 #timer
+
+loop
+
+	v1 := 2 # delay timer ticks at 60 Hz
+	delay := v1
+	#buzzer := v0
+
+	loop
+		v0 := delay
+		if v0 > 0 then
+	again
+	
+#redraw poop sprite to clear it
+draw-poop
+
+move-poop-randomly
+
+# draw poop sprite at a new location
+draw-poop
+
+# repeat again
+ve -= 1
+if ve > 0 then
+again
+
+again
+
+: draw-poop
+i := po
+v7 := va
+sprite v7 v8 4
+
+i := op
+v7 += 8
+sprite v7 v8 4
+return
+
+: move-poop-randomly
+v9 := random 2
+if v9 > 1 begin
+ va += 1
+else
+ va -= 1
+end
+return
+
+: poo1
+0x01 0x03 0x04 0x08 0x0C 0x30 0x40 0x8C 0xE8 0x80 0x84 0x43 0x30 0x0F 0x00
+
+: poo2
+0x00 0x80 0x40 0x20 0x60 0x18 0x04 0x62 0x4E 0x01 0x21 0xC1 0x06 0xF8 0x00
+
+: po
+0xEE 0xAA 0xEA 0x8E 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+
+: op
+0xEE 0xAA 0xAE 0xE8 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
