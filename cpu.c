@@ -41,22 +41,24 @@ void draw(StateChip8* state, uint16_t opcode, uint8_t vx, uint8_t vy)
 	uint8_t rx = state->V[vx]; //sprite x
 	uint8_t ry = state->V[vy]; //sprite y
 	uint8_t sprite_height = opcode & 0x000F;
-	uint8_t pixel;
+	uint8_t sprite_row;
 	//reset collision bit
 	state->V[0xF] = 0;
 
 	for (int y = 0; y < sprite_height; y++)
 	{
-		pixel = state->memory[state->I + y];
+		sprite_row = state->memory[state->I + y];
 		for (int x = 0; x < 8; x++)
 		{
-			if ((pixel & (0x80 >> x)) != 0)
+			//get the x-th pixel from the sprite row
+			if ((sprite_row & (0x80 >> x)) != 0)
 			{
-				if (state->display[(ry + y) * DISPLAY_WIDTH + rx + x] == 1)
+				int display_pixel_address = ((ry + y) * DISPLAY_WIDTH + rx + x) % (CHIP8_DISPLAY_SIZE);
+				if (state->display[display_pixel_address] == 1)
 				{
 					state->V[0xF] = 1;
 				}
-				state->display[(ry + y) * DISPLAY_WIDTH + rx + x] ^= 1;
+				state->display[display_pixel_address] ^= 1;
 			}
 		}
 	}
@@ -77,7 +79,7 @@ void emulate_op(StateChip8* state)
 	vx = (opcode & 0x0F00) >> 8;
 	vy = (opcode & 0x00F0) >> 4;
 	//decode first 4 bits - the first nibble of the opcode:
-	state->draw_flag = 1;
+	//state->draw_flag = 1;
 	switch (opcode & 0xF000)
 	{
 	case 0x0000:
@@ -163,7 +165,6 @@ void emulate_op(StateChip8* state)
 			state->V[0xF] = overflow;
 			break;
 		}
-		break;
 		case 0x0006: {
 			//Stores the least significant bit of VX in VF and then shifts VX to the right by 1.
 			uint8_t overflow = state->V[vx] & 0x1;
@@ -278,6 +279,7 @@ void emulate_op(StateChip8* state)
 			break;
 		case 0x0055:
 			//fill memory at I to I+x (inclusive!) with values of v0 to vx
+			//I should stay incremented afterwards
 			for (int i = 0; i <= vx; i++)
 			{
 				state->memory[state->I + i] = state->V[i];
@@ -285,6 +287,7 @@ void emulate_op(StateChip8* state)
 			break;
 		case 0x0065:
 			//fill v0 to vx with values from memory starting at i
+			//I should stay incremented afterwards
 			for (int i = 0; i <= vx; i++)
 			{
 				state->V[i] = state->memory[state->I + i];
